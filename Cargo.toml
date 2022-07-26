@@ -1,0 +1,39 @@
+[package]
+name = "pallet-contracts-xcm"
+version = "0.1.0"
+edition = "2021"
+authors = ["Parity Technologies <admin@parity.io>"]
+license = "Apache-2.0"
+homepage = "https://substrate.io"
+repository = "https://github.com/paritytech/pallet-contracts-xcm/"
+description = "XCM chain extension for pallet-contracts"
+
+[dependencies]
+codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
+    "derive",
+    "max-encoded-len",
+] }
+num_enum = { version = "0.5", default-features = false }
+
+# substrate
+frame-support = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+pallet-contracts = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+
+# polkadot
+xcm = { git = "https://github.com/paritytech/polkadot.git", default-features = false }
+xcm-executor = { git = "https://github.com/paritytech/polkadot.git", default-features = false }
+
+[features]
+default = ["std"]
+std = [
+    "codec/std",
+    "num_enum/std",
+
+    "frame-support/std",
+    "pallet-contracts/std",
+    "sp-std/std",
+
+    "xcm/std",
+    "xcm-executor/std",
+]
