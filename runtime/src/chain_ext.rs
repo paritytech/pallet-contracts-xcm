@@ -30,19 +30,12 @@ enum Error {
 }
 
 #[derive(Decode)]
-struct PrepareExecuteInput<Call> {
-	dest: VersionedMultiLocation,
-	xcm: VersionedXcm<Call>,
-}
-
-#[derive(Decode)]
 struct ValidateSendInput {
 	dest: VersionedMultiLocation,
 	xcm: VersionedXcm<()>,
 }
 
 pub struct PreparedExecution<Call> {
-	dest: MultiLocation,
 	xcm: Xcm<Call>,
 	weight: Weight,
 }
@@ -80,31 +73,36 @@ where
 			Command::PrepareExecute => {
 				let mut env = env.buf_in_buf_out();
 				let len = env.in_len();
-				let input: PrepareExecuteInput<CallOf<T>> = env.read_as_unbounded(len)?;
+				let input: VersionedXcm<CallOf<T>> = env.read_as_unbounded(len)?;
 				let mut xcm =
-					input.xcm.try_into().map_err(|_| PalletError::<T>::XcmVersionNotSupported)?;
+					input.try_into().map_err(|_| PalletError::<T>::XcmVersionNotSupported)?;
 				let weight =
 					T::Weigher::weight(&mut xcm).map_err(|_| PalletError::<T>::CannotWeigh)?;
-				self.prepared_execute = Some(PreparedExecution {
-					dest: input
-						.dest
-						.try_into()
-						.map_err(|_| PalletError::<T>::XcmVersionNotSupported)?,
-					xcm,
-					weight,
-				});
+				self.prepared_execute = Some(PreparedExecution { xcm, weight });
 				weight.using_encoded(|w| env.write(w, true, None))?;
 			},
 			Command::Execute => {
 				let input =
 					self.prepared_execute.take().ok_or(PalletError::<T>::PreparationMissing)?;
 				env.charge_weight(input.weight)?;
-				T::XcmExecutor::execute_xcm_in_credit(
-					input.dest,
+				let origin = MultiLocation {
+					parents: 0,
+					interior: Junctions::X1(Junction::AccountId32 {
+						network: NetworkId::Any,
+						id: *env.ext().address().as_ref(),
+					}),
+				};
+				let outcome = T::XcmExecutor::execute_xcm_in_credit(
+					origin,
 					input.xcm,
 					input.weight,
 					input.weight,
 				);
+				// revert for anything but a complete excution
+				match outcome {
+					Outcome::Complete(_) => (),
+					_ => Err(PalletError::<T>::ExecutionFailed)?,
+				}
 			},
 			Command::ValidateSend => {
 				let mut env = env.buf_in_buf_out();
@@ -142,12 +140,12 @@ where
 						id: *env.ext().address().as_ref(),
 					}),
 				};
-				let query_id = pallet_xcm::Pallet::<T>::new_query(location, Bounded::max_value());
+				let query_id: u64 = pallet_xcm::Pallet::<T>::new_query(location, Bounded::max_value()).into();
 				query_id.using_encoded(|q| env.write(q, true, None))?;
 			},
 			Command::TakeResponse => {
-				let mut env = env.prim_in_buf_out();
-				let query_id = (env.val0() as u64) | ((env.val1() as u64) << 32);
+				let mut env = env.buf_in_buf_out();
+				let query_id: u64 = env.read_as()?;
 				let response = unwrap!(
 					pallet_xcm::Pallet::<T>::take_response(query_id).map(|ret| ret.0).ok_or(()),
 					Error::NoResponse
@@ -164,5 +162,5 @@ impl<T: Config> RegisteredChainExtension<T> for XcmExtension<T>
 where
 	<T as SysConfig>::AccountId: AsRef<[u8; 32]>,
 {
-	const ID: u16 = 1;
+	const ID: u16 = 0;
 }
