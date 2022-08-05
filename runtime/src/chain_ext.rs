@@ -162,5 +162,5 @@ impl<T: Config> RegisteredChainExtension<T> for XcmExtension<T>
 where
 	<T as SysConfig>::AccountId: AsRef<[u8; 32]>,
 {
-	const ID: u16 = 0;
+	const ID: u16 = 1;
 }

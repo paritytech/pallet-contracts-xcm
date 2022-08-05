@@ -14,7 +14,8 @@ impl FromStatusCode for Error {
     fn from_status_code(status_code: u32) -> Result<(), Self> {
         match status_code {
             0 => Ok(()),
-            _ => Err(Self::NoResponse),
+            1 => Err(Self::NoResponse),
+            _ => panic!("Unknown status code"),
         }
     }
 }
@@ -23,21 +24,21 @@ impl FromStatusCode for Error {
 pub trait Extension {
     type ErrorCode = Error;
 
-    #[ink(extension = 0, handle_status = false, returns_result = false)]
+    #[ink(extension = 0x00010000, handle_status = false, returns_result = false)]
     fn prepare_execute(xcm: VersionedXcm<()>) -> u64;
 
-    #[ink(extension = 1, handle_status = false, returns_result = false)]
+    #[ink(extension = 0x00010001, handle_status = false, returns_result = false)]
     fn execute();
 
-    #[ink(extension = 2, handle_status = false, returns_result = false)]
+    #[ink(extension = 0x00010002, handle_status = false, returns_result = false)]
     fn prepare_send(dest: VersionedMultiLocation, xcm: VersionedXcm<()>) -> VersionedMultiAsset;
 
-    #[ink(extension = 3, handle_status = false, returns_result = false)]
+    #[ink(extension = 0x00010003, handle_status = false, returns_result = false)]
     fn send();
 
-    #[ink(extension = 4, handle_status = false, returns_result = false)]
+    #[ink(extension = 0x00010004, handle_status = false, returns_result = false)]
     fn new_query() -> u64;
 
-    #[ink(extension = 5, handle_status = true, returns_result = false)]
+    #[ink(extension = 0x00010005, handle_status = true, returns_result = false)]
     fn take_response(query_id: u64) -> Result<VersionedResponse, Error>;
 }
