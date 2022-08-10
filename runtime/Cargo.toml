@@ -18,9 +18,9 @@ frame-support = { git = "https://github.com/paritytech/substrate", default-featu
 frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "master" }
 pallet-contracts = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "master" }
 
-pallet-xcm = { git = "https://github.com/paritytech/polkadot", default-features = false }
-xcm = { git = "https://github.com/paritytech/polkadot", default-features = false }
-xcm-executor = { git = "https://github.com/paritytech/polkadot", default-features = false }
+pallet-xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "master" }
+xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "master" }
+xcm-executor = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "master" }
 
 [features]
 default = ["std"]
