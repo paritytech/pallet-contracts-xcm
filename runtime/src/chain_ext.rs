@@ -1,6 +1,6 @@
 use crate::{Config, Error as PalletError};
 use codec::{Decode, Encode};
-use frame_support::weights::Weight;
+use frame_support::{weights::Weight, DefaultNoBound};
 use pallet_contracts::chain_extension::{
 	ChainExtension, Environment, Ext, InitState, RegisteredChainExtension, Result, RetVal,
 	SysConfig, UncheckedFrom,
@@ -45,7 +45,7 @@ pub struct ValidatedSend {
 	xcm: Xcm<()>,
 }
 
-#[derive(Default)]
+#[derive(DefaultNoBound)]
 pub struct Extension<T: Config> {
 	prepared_execute: Option<PreparedExecution<CallOf<T>>>,
 	validated_send: Option<ValidatedSend>,
