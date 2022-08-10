@@ -46,7 +46,7 @@ pub struct ValidatedSend {
 }
 
 #[derive(Default)]
-struct XcmExtension<T: Config> {
+pub struct Extension<T: Config> {
 	prepared_execute: Option<PreparedExecution<CallOf<T>>>,
 	validated_send: Option<ValidatedSend>,
 }
@@ -60,7 +60,7 @@ macro_rules! unwrap {
 	};
 }
 
-impl<T: Config> ChainExtension<T> for XcmExtension<T>
+impl<T: Config> ChainExtension<T> for Extension<T>
 where
 	<T as SysConfig>::AccountId: AsRef<[u8; 32]>,
 {
@@ -140,7 +140,8 @@ where
 						id: *env.ext().address().as_ref(),
 					}),
 				};
-				let query_id: u64 = pallet_xcm::Pallet::<T>::new_query(location, Bounded::max_value()).into();
+				let query_id: u64 =
+					pallet_xcm::Pallet::<T>::new_query(location, Bounded::max_value()).into();
 				query_id.using_encoded(|q| env.write(q, true, None))?;
 			},
 			Command::TakeResponse => {
@@ -158,7 +159,7 @@ where
 	}
 }
 
-impl<T: Config> RegisteredChainExtension<T> for XcmExtension<T>
+impl<T: Config> RegisteredChainExtension<T> for Extension<T>
 where
 	<T as SysConfig>::AccountId: AsRef<[u8; 32]>,
 {

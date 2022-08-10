@@ -20,6 +20,7 @@
 
 mod chain_ext;
 
+pub use chain_ext::Extension;
 pub use pallet::*;
 
 #[frame_support::pallet]
