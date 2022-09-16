@@ -8,6 +8,7 @@ use pallet_contracts::chain_extension::{
 use sp_runtime::traits::Bounded;
 use xcm::prelude::*;
 use xcm_executor::traits::WeightBounds;
+use log;
 
 type CallOf<T> = <T as SysConfig>::Call;
 
@@ -129,7 +130,14 @@ where
 				let input =
 					self.validated_send.take().ok_or(PalletError::<T>::PreparationMissing)?;
 				T::XcmRouter::send_xcm(input.dest, input.xcm)
-					.map_err(|_| PalletError::<T>::SendFailed)?;
+					.map_err(|e| {
+						log::debug!(
+							target: "Contracts",
+							"Send Failed: {:?}",
+							e
+						);
+						PalletError::<T>::SendFailed
+					})?;
 			},
 			Command::NewQuery => {
 				let mut env = env.buf_in_buf_out();
