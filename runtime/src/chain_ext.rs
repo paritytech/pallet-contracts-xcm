@@ -10,7 +10,7 @@ use xcm::prelude::*;
 use xcm_executor::traits::WeightBounds;
 use log;
 
-type CallOf<T> = <T as SysConfig>::Call;
+type RuntimeCallOf<T> = <T as SysConfig>::RuntimeCall;
 
 #[repr(u16)]
 #[derive(num_enum::TryFromPrimitive)]
@@ -48,7 +48,7 @@ pub struct ValidatedSend {
 
 #[derive(DefaultNoBound)]
 pub struct Extension<T: Config> {
-	prepared_execute: Option<PreparedExecution<CallOf<T>>>,
+	prepared_execute: Option<PreparedExecution<RuntimeCallOf<T>>>,
 	validated_send: Option<ValidatedSend>,
 }
 
@@ -74,11 +74,11 @@ where
 			Command::PrepareExecute => {
 				let mut env = env.buf_in_buf_out();
 				let len = env.in_len();
-				let input: VersionedXcm<CallOf<T>> = env.read_as_unbounded(len)?;
+				let input: VersionedXcm<RuntimeCallOf<T>> = env.read_as_unbounded(len)?;
 				let mut xcm =
 					input.try_into().map_err(|_| PalletError::<T>::XcmVersionNotSupported)?;
 				let weight =
-					T::Weigher::weight(&mut xcm).map_err(|_| PalletError::<T>::CannotWeigh)?;
+					Weight::from_ref_time(T::Weigher::weight(&mut xcm).map_err(|_| PalletError::<T>::CannotWeigh)?);
 				self.prepared_execute = Some(PreparedExecution { xcm, weight });
 				weight.using_encoded(|w| env.write(w, true, None))?;
 			},
@@ -96,8 +96,8 @@ where
 				let outcome = T::XcmExecutor::execute_xcm_in_credit(
 					origin,
 					input.xcm,
-					input.weight,
-					input.weight,
+					input.weight.ref_time(),
+					input.weight.ref_time(),
 				);
 				// revert for anything but a complete excution
 				match outcome {
