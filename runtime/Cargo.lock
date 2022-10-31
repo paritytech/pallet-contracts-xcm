@@ -1381,6 +1381,7 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-core",
+ "sp-io",
  "sp-runtime",
  "sp-std",
  "xcm",
@@ -1389,8 +1390,8 @@ dependencies = [
 
 [[package]]
 name = "pallet-xcm"
-version = "0.9.30"
-source = "git+https://github.com/paritytech/polkadot?branch=release-v0.9.30#064536093f5ff70d867f4bbce8d4c41a406d317a"
+version = "0.9.29"
+source = "git+https://github.com/arturgontijo/polkadot?branch=trappist-xcm-v3#3daed4e0780c4c150f60a2be535230f728d43e3d"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -1399,6 +1400,7 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-core",
+ "sp-io",
  "sp-runtime",
  "sp-std",
  "xcm",
@@ -2938,22 +2940,24 @@ dependencies = [
 
 [[package]]
 name = "xcm"
-version = "0.9.30"
-source = "git+https://github.com/paritytech/polkadot?branch=release-v0.9.30#064536093f5ff70d867f4bbce8d4c41a406d317a"
+version = "0.9.29"
+source = "git+https://github.com/arturgontijo/polkadot?branch=trappist-xcm-v3#3daed4e0780c4c150f60a2be535230f728d43e3d"
 dependencies = [
  "derivative",
  "impl-trait-for-tuples",
  "log",
  "parity-scale-codec",
  "scale-info",
+ "serde",
+ "sp-io",
  "sp-runtime",
  "xcm-procedural",
 ]
 
 [[package]]
 name = "xcm-executor"
-version = "0.9.30"
-source = "git+https://github.com/paritytech/polkadot?branch=release-v0.9.30#064536093f5ff70d867f4bbce8d4c41a406d317a"
+version = "0.9.29"
+source = "git+https://github.com/arturgontijo/polkadot?branch=trappist-xcm-v3#3daed4e0780c4c150f60a2be535230f728d43e3d"
 dependencies = [
  "frame-support",
  "impl-trait-for-tuples",
@@ -2969,8 +2973,8 @@ dependencies = [
 
 [[package]]
 name = "xcm-procedural"
-version = "0.9.30"
-source = "git+https://github.com/paritytech/polkadot?branch=release-v0.9.30#064536093f5ff70d867f4bbce8d4c41a406d317a"
+version = "0.9.29"
+source = "git+https://github.com/arturgontijo/polkadot?branch=trappist-xcm-v3#3daed4e0780c4c150f60a2be535230f728d43e3d"
 dependencies = [
  "Inflector",
  "proc-macro2",
