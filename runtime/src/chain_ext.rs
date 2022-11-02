@@ -94,7 +94,7 @@ where
 				let origin = MultiLocation {
 					parents: 0,
 					interior: Junctions::X1(Junction::AccountId32 {
-						network: Some(NetworkId::Rococo),
+						network: None,
 						id: *env.ext().address().as_ref(),
 					}),
 				};
@@ -154,7 +154,7 @@ where
 				let location = MultiLocation {
 					parents: 0,
 					interior: Junctions::X1(Junction::AccountId32 {
-						network: Some(NetworkId::Rococo),
+						network: None,
 						id: *env.ext().address().as_ref(),
 					}),
 				};
