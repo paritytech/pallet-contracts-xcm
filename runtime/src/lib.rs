@@ -41,6 +41,7 @@ pub mod pallet {
 		XcmVersionNotSupported,
 		PreparationMissing,
 		ExecutionFailed,
+		ValidateFailed,
 		SendFailed,
 		CannotWeigh,
 	}

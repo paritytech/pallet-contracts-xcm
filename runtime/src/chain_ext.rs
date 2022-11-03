@@ -1,6 +1,7 @@
 use crate::{Config, Error as PalletError};
 use codec::{Decode, Encode};
 use frame_support::{weights::Weight, DefaultNoBound};
+use log;
 use pallet_contracts::chain_extension::{
 	ChainExtension, Environment, Ext, InitState, RegisteredChainExtension, Result, RetVal,
 	SysConfig, UncheckedFrom,
@@ -8,9 +9,8 @@ use pallet_contracts::chain_extension::{
 use sp_runtime::traits::Bounded;
 use xcm::prelude::*;
 use xcm_executor::traits::WeightBounds;
-use log;
 
-type CallOf<T> = <T as SysConfig>::Call;
+type CallOf<T> = <T as SysConfig>::RuntimeCall;
 
 #[repr(u16)]
 #[derive(num_enum::TryFromPrimitive)]
@@ -77,29 +77,35 @@ where
 				let input: VersionedXcm<CallOf<T>> = env.read_as_unbounded(len)?;
 				let mut xcm =
 					input.try_into().map_err(|_| PalletError::<T>::XcmVersionNotSupported)?;
-				let weight =
-					T::Weigher::weight(&mut xcm).map_err(|_| PalletError::<T>::CannotWeigh)?;
+				let weight = Weight::from_ref_time(
+					T::Weigher::weight(&mut xcm).map_err(|_| PalletError::<T>::CannotWeigh)?,
+				);
 				self.prepared_execute = Some(PreparedExecution { xcm, weight });
 				weight.using_encoded(|w| env.write(w, true, None))?;
 			},
 			Command::Execute => {
-				let input =
-					self.prepared_execute.take().ok_or(PalletError::<T>::PreparationMissing)?;
+				let input = self
+					.prepared_execute
+					.as_ref()
+					.take()
+					.ok_or(PalletError::<T>::PreparationMissing)?;
 				env.charge_weight(input.weight)?;
 				let origin = MultiLocation {
 					parents: 0,
 					interior: Junctions::X1(Junction::AccountId32 {
-						network: NetworkId::Any,
+						network: None,
 						id: *env.ext().address().as_ref(),
 					}),
 				};
+				let hash = input.xcm.using_encoded(sp_io::hashing::blake2_256);
 				let outcome = T::XcmExecutor::execute_xcm_in_credit(
 					origin,
-					input.xcm,
-					input.weight,
-					input.weight,
+					input.xcm.clone(),
+					hash,
+					input.weight.ref_time(),
+					input.weight.ref_time(),
 				);
-				// revert for anything but a complete excution
+				// revert for anything but a complete execution
 				match outcome {
 					Outcome::Complete(_) => (),
 					_ => Err(PalletError::<T>::ExecutionFailed)?,
@@ -109,47 +115,42 @@ where
 				let mut env = env.buf_in_buf_out();
 				let len = env.in_len();
 				let input: ValidateSendInput = env.read_as_unbounded(len)?;
-				self.validated_send = Some(ValidatedSend {
-					dest: input
-						.dest
-						.try_into()
-						.map_err(|_| PalletError::<T>::XcmVersionNotSupported)?,
-					xcm: input
-						.xcm
-						.try_into()
-						.map_err(|_| PalletError::<T>::XcmVersionNotSupported)?,
-				});
-				// just a dummy asset until XCMv3 rolls around with its validate function
-				let asset = MultiAsset {
-					id: AssetId::Concrete(MultiLocation { parents: 0, interior: Junctions::Here }),
-					fun: Fungibility::Fungible(0),
-				};
-				VersionedMultiAsset::from(asset).using_encoded(|a| env.write(a, true, None))?;
+				let dest: MultiLocation =
+					input.dest.try_into().map_err(|_| PalletError::<T>::XcmVersionNotSupported)?;
+				let xcm: Xcm<()> =
+					input.xcm.try_into().map_err(|_| PalletError::<T>::XcmVersionNotSupported)?;
+				let (_, _) = validate_send::<T::XcmRouter>(dest.clone(), xcm.clone())
+					.map_err(|_| PalletError::<T>::ValidateFailed)?;
+				self.validated_send = Some(ValidatedSend { dest, xcm });
 			},
 			Command::Send => {
-				let input =
-					self.validated_send.take().ok_or(PalletError::<T>::PreparationMissing)?;
-				T::XcmRouter::send_xcm(input.dest, input.xcm)
+				let input = self
+					.validated_send
+					.as_ref()
+					.take()
+					.ok_or(PalletError::<T>::PreparationMissing)?;
+				pallet_xcm::Pallet::<T>::send_xcm(Junctions::Here, input.dest, input.xcm.clone())
 					.map_err(|e| {
-						log::debug!(
-							target: "Contracts",
-							"Send Failed: {:?}",
-							e
-						);
-						PalletError::<T>::SendFailed
-					})?;
+					log::debug!(
+						target: "Contracts",
+						"Send Failed: {:?}",
+						e
+					);
+					PalletError::<T>::SendFailed
+				})?;
 			},
 			Command::NewQuery => {
 				let mut env = env.buf_in_buf_out();
 				let location = MultiLocation {
 					parents: 0,
 					interior: Junctions::X1(Junction::AccountId32 {
-						network: NetworkId::Any,
+						network: None,
 						id: *env.ext().address().as_ref(),
 					}),
 				};
 				let query_id: u64 =
-					pallet_xcm::Pallet::<T>::new_query(location, Bounded::max_value()).into();
+					pallet_xcm::Pallet::<T>::new_query(location, Bounded::max_value(), location)
+						.into();
 				query_id.using_encoded(|q| env.write(q, true, None))?;
 			},
 			Command::TakeResponse => {
