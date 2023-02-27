@@ -3,7 +3,7 @@ use codec::{Decode, Encode};
 use frame_support::{weights::Weight, DefaultNoBound};
 use pallet_contracts::chain_extension::{
 	ChainExtension, Environment, Ext, InitState, RegisteredChainExtension, Result, RetVal,
-	SysConfig, UncheckedFrom,
+	SysConfig,
 };
 use sp_runtime::traits::Bounded;
 use xcm::prelude::*;
@@ -68,7 +68,6 @@ where
 	fn call<E>(&mut self, mut env: Environment<E, InitState>) -> Result<RetVal>
 	where
 		E: Ext<T = T>,
-		<E::T as SysConfig>::AccountId: UncheckedFrom<<E::T as SysConfig>::Hash> + AsRef<[u8]>,
 	{
 		match Command::try_from(env.func_id()).map_err(|_| PalletError::<T>::InvalidCommand)? {
 			Command::PrepareExecute => {
