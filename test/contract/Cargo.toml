@@ -1,26 +1,28 @@
 [package]
-name = "ink_xcm_extension"
-version = "1.0.0"
-authors = ["Parity Technologies <admin@parity.io>"]
+name = "xcm_contract"
+version = "0.1.0"
+authors = ["[your_name] <[your_email]>"]
 edition = "2021"
-publish = false
 
 [dependencies]
 ink = { version = "4.2.1", default-features = false }
+ink_xcm_extension = {path = "../../ink", version = "1.0.0", default-features = false}
 scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
 scale-info = { version = "2", default-features = false, features = ["derive"] }
-xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "master" }
+
+[dev-dependencies]
+ink_e2e = "4.2.1"
 
 [lib]
-path = "src/lib.rs"
+path = "lib.rs"
 
 [features]
 default = ["std"]
 std = [
-    "ink/std",
-    "scale/std",
-    "scale-info/std",
-    "xcm/std",
-]
+  "ink/std",
+  "scale/std",
+  "scale-info/std",
+  "ink_xcm_extension/std"
+ ]
 ink-as-dependency = []
-
+e2e-tests = []
