@@ -1,5 +1,6 @@
 [package]
 name = "xcm_contract"
+authors = ["Parity Technologies <admin@parity.io>"]
 version = "0.1.0"
 edition = "2021"
 
