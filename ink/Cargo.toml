@@ -12,7 +12,7 @@ scale-info = { version = "2", default-features = false, features = ["derive"] }
 xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "master" }
 
 [lib]
-path = "src/lib.rs"
+path = "lib.rs"
 
 [features]
 default = ["std"]
