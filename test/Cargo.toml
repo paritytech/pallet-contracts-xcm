@@ -7,7 +7,7 @@ edition = "2021"
 [dependencies]
 codec = { package = "parity-scale-codec", version = "3.5.0", features = ["derive", "max-encoded-len"] }
 serde = { version = "1",  features = ["derive"] }
-serde_json = { version = "1.0.96" }
+serde_json = { version = "1.0.104" }
 
 # Local
 mock-network = { path = "./mock-network" }

@@ -78,11 +78,16 @@ pub struct Invokable {
 }
 
 pub fn read_contract() -> Contract {
-    let file = std::fs::File::open(
-        "/Users/pg/github/pallet-contracts-xcm/target/ink/xcm_contract/xcm_contract.contract",
-    )
-    .expect("xcm contract build not found");
-    let contract = BufReader::new(file);
+    // When `CARGO_MANIFEST_DIR` is not set, Rust resolves relative paths from the root folder
+    // /Users/pg/github/pallet-contracts-xcm/test/src/contract_utils.rs
+    let root = std::env::var("CARGO_MANIFEST_DIR").unwrap_or("./test".to_string());
 
+    let contract_path = std::path::Path::new(&root)
+        .join("../target/ink/xcm_contract/xcm_contract.contract")
+        .canonicalize()
+        .unwrap();
+
+    let file = std::fs::File::open(contract_path).expect("xcm contract build not found");
+    let contract = BufReader::new(file);
     serde_json::from_reader(contract).expect("Invalid json.")
 }
