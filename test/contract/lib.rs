@@ -19,7 +19,7 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 use ink::env::Environment;
-use ink_xcm_extension::XCMExtension;
+use extension_xcm::XCMExtension;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
@@ -39,7 +39,7 @@ impl Environment for CustomEnvironment {
 
 #[ink::contract(env = crate::CustomEnvironment)]
 mod xcm_contract {
-    use ink_xcm_extension::{
+    use extension_xcm::{
         prelude::*, VersionedMultiLocation, VersionedResponse, VersionedXcm, XCMError,
     };
     use scale_info::prelude::vec::Vec;

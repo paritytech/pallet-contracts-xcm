@@ -1133,6 +1133,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "extension-xcm"
+version = "1.0.0"
+dependencies = [
+ "ink",
+ "parity-scale-codec",
+ "scale-info",
+ "xcm",
+]
+
+[[package]]
 name = "fake-simd"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2104,16 +2114,6 @@ dependencies = [
  "ink_primitives",
  "parity-scale-codec",
  "scale-info",
-]
-
-[[package]]
-name = "ink_xcm_extension"
-version = "1.0.0"
-dependencies = [
- "ink",
- "parity-scale-codec",
- "scale-info",
- "xcm",
 ]
 
 [[package]]
@@ -6653,9 +6653,9 @@ dependencies = [
 name = "xcm_contract"
 version = "0.1.0"
 dependencies = [
+ "extension-xcm",
  "ink",
  "ink_e2e",
- "ink_xcm_extension",
  "parity-scale-codec",
  "scale-info",
 ]
