@@ -22,5 +22,4 @@ std = [
     "scale-info/std",
     "xcm/std",
 ]
-ink-as-dependency = []
 
