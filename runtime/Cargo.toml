@@ -7,16 +7,17 @@ version = "0.1.0"
 [dependencies]
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive"] }
 num_enum = { version = "0.5", default-features = false }
-scale-info = { version = "2", default-features = false, features = ["derive"] }
-serde = { version = "1", optional = true, features = ["derive"] }
+scale-info = { version = "2.7.0", default-features = false, features = ["derive"] }
+serde = { version = "1.0.163", optional = true, features = ["derive"] }
 log = { version = "0.4", default-features = false }
 
-sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "master" }
-sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "master" }
-sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "master" }
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "master" }
 frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "master" }
 pallet-contracts = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "master" }
+sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "master" }
+sp-io = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "master" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "master" }
+sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "master" }
 
 pallet-xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "master" }
 xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "master" }
@@ -30,6 +31,7 @@ std = [
 	"scale-info/std",
 	"serde",
 	"sp-std/std",
+	"sp-io/std",
 	"sp-core/std",
 	"sp-runtime/std",
 	"frame-support/std",
@@ -38,7 +40,4 @@ std = [
 	"pallet-xcm/std",
 	"xcm/std",
 	"xcm-executor/std",
-]
-runtime-benchmarks = [
-	"frame-system/runtime-benchmarks"
 ]

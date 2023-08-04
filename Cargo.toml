@@ -1,0 +1,9 @@
+[workspace]
+
+members = [
+ "ink",
+ "runtime",
+ "test",
+ "test/mock-network",
+ "test/contract",
+]

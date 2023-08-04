@@ -1,167 +1,165 @@
+// Copyright Parity Technologies (UK) Ltd.
+// This file is part of Polkadot.
+
+// Polkadot is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// Polkadot is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with Polkadot.  If not, see <http://www.gnu.org/licenses/>.
+
 use crate::{Config, Error as PalletError};
 use codec::{Decode, Encode};
-use frame_support::{weights::Weight, DefaultNoBound};
+use core::convert::identity;
+use frame_support::DefaultNoBound;
 use pallet_contracts::chain_extension::{
-	ChainExtension, Environment, Ext, InitState, RegisteredChainExtension, Result, RetVal,
-	SysConfig, UncheckedFrom,
+    ChainExtension, Environment, Ext, InitState, Result, RetVal, SysConfig,
 };
-use sp_runtime::traits::Bounded;
-use xcm::prelude::*;
-use xcm_executor::traits::WeightBounds;
+use pallet_xcm::{Error as XCMError, WeightInfo};
+use xcm::{prelude::*, v3::QueryId};
+use xcm_executor::traits::{QueryHandler, QueryResponseStatus};
 
-type CallOf<T> = <T as SysConfig>::Call;
+type CallOf<T> = <T as SysConfig>::RuntimeCall;
 
+/// The commands that the chain extension accepts.
+/// See the ink! counterpart for more details.
 #[repr(u16)]
 #[derive(num_enum::TryFromPrimitive)]
 enum Command {
-	PrepareExecute = 0,
-	Execute = 1,
-	ValidateSend = 2,
-	Send = 3,
-	NewQuery = 4,
-	TakeResponse = 5,
+    Execute = 1,
+    Send = 2,
+    NewQuery = 3,
+    TakeResponse = 4,
 }
 
+/// The errors that the chain extension can return.
 #[repr(u32)]
 #[derive(num_enum::IntoPrimitive)]
 enum Error {
-	Success = 0,
-	NoResponse = 1,
+    /// The Call finished successfully.
+    Success = 0,
+    /// The XCM query requested via [`Command::TakeResponse`] was not found
+    QueryNotFound = 1,
 }
 
+/// The input for [`Command::Send`].
 #[derive(Decode)]
-struct ValidateSendInput {
-	dest: VersionedMultiLocation,
-	xcm: VersionedXcm<()>,
+struct SendInput {
+    dest: VersionedMultiLocation,
+    msg: VersionedXcm<()>,
 }
 
-pub struct PreparedExecution<Call> {
-	xcm: Xcm<Call>,
-	weight: Weight,
+/// The input for [`Command::NewQuery`].
+#[derive(Decode)]
+struct NewQueryInput {
+    timeout: u32, // TODO use BlockNumberFor<T> when ink_extension supports generics
+    match_querier: VersionedMultiLocation,
 }
 
-pub struct ValidatedSend {
-	dest: MultiLocation,
-	xcm: Xcm<()>,
-}
-
+/// The XCM chain extension, that should be use in pallet-contracts configuration, to interact with XCM.
 #[derive(DefaultNoBound)]
-pub struct Extension<T: Config> {
-	prepared_execute: Option<PreparedExecution<CallOf<T>>>,
-	validated_send: Option<ValidatedSend>,
-}
+pub struct XCMExtension<T: Config>(sp_std::marker::PhantomData<T>);
 
-macro_rules! unwrap {
-	($val:expr, $err:expr) => {
-		match $val {
-			Ok(inner) => inner,
-			Err(_) => return Ok(RetVal::Converging($err.into())),
-		}
-	};
-}
+const LOG_TARGET: &'static str = "pallet_contracts_xcm";
 
-impl<T: Config> ChainExtension<T> for Extension<T>
+impl<T: Config> ChainExtension<T> for XCMExtension<T>
 where
-	<T as SysConfig>::AccountId: AsRef<[u8; 32]>,
+    <T as SysConfig>::AccountId: AsRef<[u8; 32]>,
 {
-	fn call<E>(&mut self, mut env: Environment<E, InitState>) -> Result<RetVal>
-	where
-		E: Ext<T = T>,
-		<E::T as SysConfig>::AccountId: UncheckedFrom<<E::T as SysConfig>::Hash> + AsRef<[u8]>,
-	{
-		match Command::try_from(env.func_id()).map_err(|_| PalletError::<T>::InvalidCommand)? {
-			Command::PrepareExecute => {
-				let mut env = env.buf_in_buf_out();
-				let len = env.in_len();
-				let input: VersionedXcm<CallOf<T>> = env.read_as_unbounded(len)?;
-				let mut xcm =
-					input.try_into().map_err(|_| PalletError::<T>::XcmVersionNotSupported)?;
-				let weight =
-					T::Weigher::weight(&mut xcm).map_err(|_| PalletError::<T>::CannotWeigh)?;
-				self.prepared_execute = Some(PreparedExecution { xcm, weight });
-				weight.using_encoded(|w| env.write(w, true, None))?;
-			},
-			Command::Execute => {
-				let input =
-					self.prepared_execute.take().ok_or(PalletError::<T>::PreparationMissing)?;
-				env.charge_weight(input.weight)?;
-				let origin = MultiLocation {
-					parents: 0,
-					interior: Junctions::X1(Junction::AccountId32 {
-						network: NetworkId::Any,
-						id: *env.ext().address().as_ref(),
-					}),
-				};
-				let outcome = T::XcmExecutor::execute_xcm_in_credit(
-					origin,
-					input.xcm,
-					input.weight,
-					input.weight,
-				);
-				// revert for anything but a complete excution
-				match outcome {
-					Outcome::Complete(_) => (),
-					_ => Err(PalletError::<T>::ExecutionFailed)?,
-				}
-			},
-			Command::ValidateSend => {
-				let mut env = env.buf_in_buf_out();
-				let len = env.in_len();
-				let input: ValidateSendInput = env.read_as_unbounded(len)?;
-				self.validated_send = Some(ValidatedSend {
-					dest: input
-						.dest
-						.try_into()
-						.map_err(|_| PalletError::<T>::XcmVersionNotSupported)?,
-					xcm: input
-						.xcm
-						.try_into()
-						.map_err(|_| PalletError::<T>::XcmVersionNotSupported)?,
-				});
-				// just a dummy asset until XCMv3 rolls around with its validate function
-				let asset = MultiAsset {
-					id: AssetId::Concrete(MultiLocation { parents: 0, interior: Junctions::Here }),
-					fun: Fungibility::Fungible(0),
-				};
-				VersionedMultiAsset::from(asset).using_encoded(|a| env.write(a, true, None))?;
-			},
-			Command::Send => {
-				let input =
-					self.validated_send.take().ok_or(PalletError::<T>::PreparationMissing)?;
-				T::XcmRouter::send_xcm(input.dest, input.xcm)
-					.map_err(|_| PalletError::<T>::SendFailed)?;
-			},
-			Command::NewQuery => {
-				let mut env = env.buf_in_buf_out();
-				let location = MultiLocation {
-					parents: 0,
-					interior: Junctions::X1(Junction::AccountId32 {
-						network: NetworkId::Any,
-						id: *env.ext().address().as_ref(),
-					}),
-				};
-				let query_id: u64 =
-					pallet_xcm::Pallet::<T>::new_query(location, Bounded::max_value()).into();
-				query_id.using_encoded(|q| env.write(q, true, None))?;
-			},
-			Command::TakeResponse => {
-				let mut env = env.buf_in_buf_out();
-				let query_id: u64 = env.read_as()?;
-				let response = unwrap!(
-					pallet_xcm::Pallet::<T>::take_response(query_id).map(|ret| ret.0).ok_or(()),
-					Error::NoResponse
-				);
-				VersionedResponse::from(response).using_encoded(|r| env.write(r, true, None))?;
-			},
-		}
+    fn call<E>(&mut self, env: Environment<E, InitState>) -> Result<RetVal>
+    where
+        E: Ext<T = T>,
+    {
+        log::debug!(target: LOG_TARGET, "Start call");
+        match Command::try_from(env.func_id()).map_err(|_| PalletError::<T>::InvalidCommand)? {
+            // Execute an XCM message locally, using the contract's address as the origin.
+            Command::Execute => {
+                log::debug!(target: LOG_TARGET, "Execute XCM message");
+                let mut env = env.buf_in_buf_out();
 
-		Ok(RetVal::Converging(Error::Success.into()))
-	}
-}
+                let message: VersionedXcm<CallOf<T>> = env.read_as_unbounded(env.in_len())?;
+                let message = Box::new(message);
+                let origin = frame_system::Origin::<T>::Signed(env.ext().address().clone());
+                let max_weight = env.ext().gas_meter().gas_left();
 
-impl<T: Config> RegisteredChainExtension<T> for Extension<T>
-where
-	<T as SysConfig>::AccountId: AsRef<[u8; 32]>,
-{
-	const ID: u16 = 1;
+                let charged = env.charge_weight(<T as pallet_xcm::Config>::WeightInfo::execute())?;
+                let res = pallet_xcm::Pallet::<T>::execute(origin.into(), message, max_weight);
+                if let Some(weight) = res.map_or_else(|res| res.post_info, identity).actual_weight {
+                    env.adjust_weight(charged, weight);
+                }
+
+                res.map_err(|err| err.error)?;
+            }
+
+            // Send an XCM message from the contract to the specified destination.
+            Command::Send => {
+                log::debug!(target: LOG_TARGET, "Send XCM message");
+                let mut env = env.buf_in_buf_out();
+                let origin = frame_system::Origin::<T>::Signed(env.ext().address().clone());
+                let SendInput { dest, msg } = env.read_as_unbounded(env.in_len())?;
+                env.charge_weight(<T as pallet_xcm::Config>::WeightInfo::send())?;
+                pallet_xcm::Pallet::<T>::send(origin.into(), Box::new(dest), Box::new(msg))?;
+            }
+
+            // Create a new query, using the contract's address as the responder.
+            Command::NewQuery => {
+                log::debug!(target: LOG_TARGET, "Create new XCM query");
+                let mut env = env.buf_in_buf_out();
+                let len = env.in_len();
+                let NewQueryInput {
+                    timeout,
+                    match_querier,
+                }: NewQueryInput = env.read_as_unbounded(len)?;
+
+                let responder = MultiLocation {
+                    parents: 0,
+                    interior: Junctions::X1(Junction::AccountId32 {
+                        network: None,
+                        id: *env.ext().address().as_ref(),
+                    }),
+                };
+
+                // TODO Charge weight
+
+                let query_id = <pallet_xcm::Pallet<T> as QueryHandler>::new_query(
+                    responder,
+                    timeout.into(),
+                    MultiLocation::try_from(match_querier)
+                        .map_err(|_| XCMError::<T>::BadVersion)?,
+                );
+
+                log::debug!(target: LOG_TARGET, "new query id {query_id}");
+                query_id.using_encoded(|q| env.write(q, true, None))?;
+            }
+
+            // Attempt to take a response for the specified query.
+            Command::TakeResponse => {
+                log::debug!(target: LOG_TARGET, "Take XCM query response");
+                let mut env = env.buf_in_buf_out();
+                let query_id: QueryId = env.read_as()?;
+                let response = <pallet_xcm::Pallet<T> as QueryHandler>::take_response(query_id);
+
+                let response = match response {
+                    QueryResponseStatus::Ready { response, .. } => {
+                        Some(VersionedResponse::from(response))
+                    }
+                    QueryResponseStatus::Pending { .. } => None,
+                    QueryResponseStatus::UnexpectedVersion => Err(XCMError::<T>::BadVersion)?,
+                    QueryResponseStatus::NotFound => {
+                        return Ok(RetVal::Converging(Error::QueryNotFound.into()));
+                    }
+                };
+                response.using_encoded(|q| env.write(q, true, None))?;
+            }
+        }
+
+        log::debug!(target: LOG_TARGET, "Call done");
+        Ok(RetVal::Converging(Error::Success.into()))
+    }
 }

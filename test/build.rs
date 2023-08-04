@@ -1,4 +1,4 @@
-// Copyright Parity Technologies (UK) Ltd.
+// Copyright (C) Parity Technologies (UK) Ltd.
 // This file is part of Polkadot.
 
 // Polkadot is free software: you can redistribute it and/or modify
@@ -14,28 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with Polkadot.  If not, see <http://www.gnu.org/licenses/>.
 
-#![cfg_attr(not(feature = "std"), no_std)]
+fn main() {
+    let status = std::process::Command::new("cargo")
+        .current_dir("./contract")
+        .args(&["contract", "build", "--offline"])
+        .status()
+        .expect("Failed to build contract");
 
-mod chain_ext;
-
-pub use chain_ext::XCMExtension;
-pub use pallet::*;
-
-/// The extension pallet, that should be included in the runtime to use the XCM chain extension.
-#[frame_support::pallet]
-pub mod pallet {
-    use super::*;
-
-    #[pallet::pallet]
-    pub struct Pallet<T>(_);
-
-    #[pallet::config]
-    pub trait Config: frame_system::Config + pallet_contracts::Config + pallet_xcm::Config {}
-
-    #[pallet::error]
-    pub enum Error<T> {
-        InvalidCommand,
-    }
-
-    impl<T: Config> Pallet<T> {}
+    assert!(status.success());
+    println!("cargo:rerun-if-changed=./contract");
 }

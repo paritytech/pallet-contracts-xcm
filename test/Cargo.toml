@@ -1,0 +1,28 @@
+[package]
+name = "pallet-contracts-xcm-test"
+build = "build.rs"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+codec = { package = "parity-scale-codec", version = "3.5.0", features = ["derive", "max-encoded-len"] }
+serde = { version = "1",  features = ["derive"] }
+serde_json = { version = "1.0.104" }
+
+# Local
+mock-network = { path = "./mock-network" }
+
+# Polkadot
+xcm = { git = "https://github.com/paritytech/polkadot", branch = "master" }
+xcm-executor = { git = "https://github.com/paritytech/polkadot", branch = "master" }
+xcm-simulator = { git = "https://github.com/paritytech/polkadot", branch = "master" }
+
+# substrate
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "master" }
+pallet-contracts = { git = "https://github.com/paritytech/substrate", branch = "master" }
+pallet-contracts-primitives = { git = "https://github.com/paritytech/substrate", branch = "master" }
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "master" }
+frame-system = { git = "https://github.com/paritytech/substrate", branch = "master" }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "master" }
+impl-serde = "0.4.0"
+
